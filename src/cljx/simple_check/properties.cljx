@@ -21,10 +21,12 @@
   (fn [args-rose]
     (gen/gen-pure
       (gen/rose-fmap
-        (fn [args] (let [result (try (apply function args) (catch Throwable t t))]
+       (fn [args] (let [result (try (apply function args)
+                                    (catch #+clj Throwable #+cljs js/Error t t))]
                      {:result result
                       :function function
-                      :args args})) args-rose))))
+                      :args args}))
+       args-rose))))
 
 (defn for-all*
   "Creates a property (properties are also generators). A property
@@ -34,17 +36,17 @@
 
   Example:
 
-  (for-all* [gen/int gen/int] fn [a b] (>= (+ a b) a))
+  (for-all* [gen/int gen/int] (fn [a b] (>= (+ a b) a)))
   "
   [args function]
   (gen/gen-bind (apply gen/tuple args)
                 (apply-gen function)))
 
-(defn binding-vars
+(defn- binding-vars
   [bindings]
   (map first (partition 2 bindings)))
 
-(defn binding-gens
+(defn- binding-gens
   [bindings]
   (map second (partition 2 bindings)))
 
@@ -55,11 +57,13 @@
 
   Examples
 
-  (for-all [a gen/int
-  b gen/int]
-  (>= (+ a b) a))
+  (for-all [a gen/int b gen/int]
+    (>= (+ a b) a))
   "
   [bindings & body]
-  `(for-all* ~(vec (binding-gens bindings))
-             (fn [~@(binding-vars bindings)]
-               ~@body)))
+  `(for-all*
+     ~(vec (binding-gens bindings))
+     (fn [~@(binding-vars bindings)]
+       ~@body)))
+
+
